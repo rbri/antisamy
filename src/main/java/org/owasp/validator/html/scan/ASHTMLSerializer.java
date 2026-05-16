@@ -3,6 +3,7 @@ package org.owasp.validator.html.scan;
 import java.io.IOException;
 import java.io.Writer;
 import java.util.Locale;
+
 import org.apache.xml.serialize.ElementState;
 import org.apache.xml.serialize.HTMLdtd;
 import org.apache.xml.serialize.OutputFormat;
@@ -149,8 +150,15 @@ public class ASHTMLSerializer extends org.apache.xml.serialize.HTMLSerializer {
       _printer.unindent();
       // XHTML: Close empty tag with ' />' so it's XML and HTML compatible.
       // HTML: Empty tags are defined as such in DTD no in document.
-      if (!elem.hasChildNodes() && isAllowedEmptyTag(tagName) && !requiresClosingTag(tagName))
-        _printer.printText("/>");
+      if (!elem.hasChildNodes() && isAllowedEmptyTag(tagName))
+        if (isSelfClosingTag(tagName) && !requiresClosingTag(tagName)) {
+          _printer.printText("/>");
+        }
+        else {
+          _printer.printText("></");
+          _printer.printText(tagName);
+          _printer.printText('>');
+        }
       else _printer.printText('>');
       // After element but parent element is no longer empty.
       state.afterElement = true;
@@ -170,8 +178,15 @@ public class ASHTMLSerializer extends org.apache.xml.serialize.HTMLSerializer {
     _printer.unindent();
     state = getElementState();
 
-    if (state.empty && isAllowedEmptyTag(rawName) && !requiresClosingTag(rawName)) { //
-      _printer.printText("/>");
+    if (state.empty && isAllowedEmptyTag(rawName)) {
+      if (isSelfClosingTag(rawName) && !requiresClosingTag(rawName)) {
+        _printer.printText("/>");
+      }
+      else {
+        _printer.printText("></");
+        _printer.printText(rawName);
+        _printer.printText('>');
+      }
     } else {
       if (state.empty) _printer.printText('>');
       // This element is not empty and that last content was another element, so print a line break
@@ -220,6 +235,16 @@ public class ASHTMLSerializer extends org.apache.xml.serialize.HTMLSerializer {
   }
 
   private boolean isAllowedEmptyTag(String tagName) {
-    return "head".equals(tagName) || allowedEmptyTags.matches(tagName);
+    return allowedEmptyTags.matches(tagName);
+  }
+
+  private boolean isSelfClosingTag(String rawName) {
+      return HTMLdtd.isEmptyTag(rawName)
+              || "link".equals(rawName)
+              || "wbr".equals(rawName)
+              || "embed".equals(rawName)
+              || "area".equals(rawName)
+              || "source".equals(rawName)
+              || "track".equals(rawName);
   }
 }
